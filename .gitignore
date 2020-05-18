@@ -47,3 +47,6 @@ tags
 
 # channel and emote list from twitch
 subscribers.json
+
+*.key
+*.pem
