@@ -27,6 +27,7 @@ type Settings struct {
 	MaxMessageCount int
 	TitleLength     int // maximum length of the title that can be set with the /playing
 	AdminPassword   string
+	RegenAdminPass  bool // regenerate admin password on start?
 	StreamKey       string
 	ListenAddress   string
 	ApprovedEmotes  []string // list of channels that have been approved for emote use.  Global emotes are always "approved".
@@ -38,6 +39,8 @@ type Settings struct {
 	RoomAccess      AccessMode
 	RoomAccessPin   string // The current pin
 	NewPin          bool   // Auto generate a new pin on start.  Overwrites RoomAccessPin if set.
+
+	WrappedEmotesOnly bool // only allow "wrapped" emotes.  eg :Kappa: and [Kappa] but not Kappa
 
 	// Rate limiting stuff, in seconds
 	RateLimitChat      time.Duration
@@ -90,10 +93,12 @@ func LoadSettings(filename string) (*Settings, error) {
 		return s, fmt.Errorf("value for MaxMessageCount must be greater than 0, given %d", s.MaxMessageCount)
 	}
 
-	//s.AdminPassword, err = generatePass(time.Now().Unix())
-	//if err != nil {
-	//return nil, fmt.Errorf("unable to generate admin password: %s", err)
-	//}
+	if s.RegenAdminPass == true || s.AdminPassword == "" {
+		s.AdminPassword, err = generatePass(time.Now().Unix())
+		if err != nil {
+			return nil, fmt.Errorf("unable to generate admin password: %s", err)
+		}
+	}
 
 	if s.RateLimitChat == -1 {
 		s.RateLimitChat = 0
@@ -123,6 +128,11 @@ func LoadSettings(filename string) (*Settings, error) {
 		s.RateLimitDuplicate = 0
 	} else if s.RateLimitDuplicate <= 0 {
 		s.RateLimitDuplicate = 30
+	}
+
+	if s.WrappedEmotesOnly {
+		common.LogInfoln("Only allowing wrapped emotes")
+		common.WrappedEmotesOnly = true
 	}
 
 	// Print this stuff before we multiply it by time.Second

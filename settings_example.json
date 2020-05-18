@@ -2,11 +2,11 @@
 	"MaxMessageCount": 300,
 	"TitleLength": 50,
 	"AdminPassword": "",
+	"RegenAdminPass": true,
 	"Bans": [],
 	"StreamKey": "ALongStreamKey",
 	"ListenAddress": ":8089",
 	"ApprovedEmotes": null,
-	"Bans": [],
 	"LogLevel": "debug",
 	"LogFile": "thelog.log",
 	"RateLimitChat": 1,
@@ -14,5 +14,6 @@
 	"RateLimitColor": 60,
 	"RateLimitAuth": 5,
 	"RateLimitDuplicate": 30,
-	"NoCache": false
+	"NoCache": false,
+	"WrappedEmotesOnly": false
 }
