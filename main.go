@@ -141,7 +141,7 @@ func startServer() {
 
 	http.HandleFunc("/", handleDefault)
 
-	err := http.ListenAndServe(addr, nil)
+	err := http.ListenAndServeTLS(addr, "crab.services.pem", "crab.services.key", nil)
 	if err != nil {
 		// If the server cannot start, don't pretend we can continue.
 		panic("Error trying to start chat/http server: " + err.Error())
