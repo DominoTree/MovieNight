@@ -124,7 +124,7 @@ func (cl *Client) NewMsg(data common.ClientData) {
 
 		} else {
 			// Limit the rate of sent chat messages.  Ignore mods and admins
-			if time.Now().Before(cl.nextChat) && cl.CmdLevel == common.CmdlUser {
+			/*if time.Now().Before(cl.nextChat) && cl.CmdLevel == common.CmdlUser {
 				err := cl.SendChatData(common.NewChatMessage("", "",
 					"Slow down.",
 					common.CmdlUser,
@@ -153,7 +153,7 @@ func (cl *Client) NewMsg(data common.ClientData) {
 					common.LogErrorf("Unable to send slowdown for chat: %v", err)
 				}
 				return
-			}
+			}*/
 
 			cl.nextChat = time.Now().Add(time.Second * settings.RateLimitChat)
 			cl.nextDuplicate = time.Now().Add(time.Second * settings.RateLimitDuplicate)

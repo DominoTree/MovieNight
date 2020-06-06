@@ -136,9 +136,9 @@ var commands = &CommandControl{
 					return "", fmt.Errorf("You are not allowed to change your color.")
 				}
 
-				if time.Now().Before(cl.nextColor) && cl.CmdLevel == common.CmdlUser {
+				/*if time.Now().Before(cl.nextColor) && cl.CmdLevel == common.CmdlUser {
 					return "", fmt.Errorf("Slow down. You can change your color in %0.0f seconds.", time.Until(cl.nextColor).Seconds())
-				}
+				}*/
 
 				if len(args) == 0 {
 					cl.setColor(common.RandomColor())
@@ -220,10 +220,10 @@ var commands = &CommandControl{
 		common.CNNick.String(): Command{
 			HelpText: "Change display name",
 			Function: func(cl *Client, args []string) (string, error) {
-				if time.Now().Before(cl.nextNick) && cl.CmdLevel == common.CmdlUser {
+				/*if time.Now().Before(cl.nextNick) && cl.CmdLevel == common.CmdlUser {
 					//cl.nextNick = time.Now().Add(time.Second * settings.RateLimitNick)
 					return "", fmt.Errorf("Slow down. You can change your nick in %0.0f seconds.", time.Until(cl.nextNick).Seconds())
-				}
+				}*/
 				cl.nextNick = time.Now().Add(time.Second * settings.RateLimitNick)
 
 				if len(args) == 0 {
