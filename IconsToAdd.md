@@ -1,10 +1,14 @@
-airplane
-helicopter
-motorcycle
-music note
-robot
-soldier
-sonic gif
-tree
-underwear
-willem dafoe face
+satellite
+antenna
+arrow
+toilet
+mexico
+compass
+wine
+microphone
+camera
+torgo
+recycle
+sax
+hammer
+

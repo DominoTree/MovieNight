@@ -89,34 +89,13 @@ func findEmotes(dir string, em common.EmotesMap) (common.EmotesMap, error) {
 	//em := NewEmotesMap()
 
 	fmt.Printf("finding emotes in %q\n", dir)
-	emotePNGs, err := filepath.Glob(filepath.Join(dir, "*.png"))
+	emotes, err := filepath.Glob(filepath.Join(dir, "*"))
 	if err != nil {
 		return em, fmt.Errorf("unable to glob emote directory: %s\n", err)
 	}
-	fmt.Printf("%d emotePNGs\n", len(emotePNGs))
+	fmt.Printf("%d emotes\n", len(emotes))
 
-	fmt.Printf("finding emotes in %q\n", dir)
-	emoteJPGs, err := filepath.Glob(filepath.Join(dir, "*.jpg"))
-	if err != nil {
-		return em, fmt.Errorf("unable to glob emote directory: %s\n", err)
-	}
-	fmt.Printf("%d emoteJPGs\n", len(emoteJPGs))
-
-	emoteGIFs, err := filepath.Glob(filepath.Join(dir, "*.gif"))
-	if err != nil {
-		return em, errors.Wrap(err, "unable to glob emote directory:")
-	}
-	fmt.Printf("%d emoteGIFs\n", len(emoteGIFs))
-
-	for _, file := range emotePNGs {
-		em = em.Add(file)
-	}
-
-	for _, file := range emoteJPGs {
-		em = em.Add(file)
-	}
-
-	for _, file := range emoteGIFs {
+	for _, file := range emotes {
 		em = em.Add(file)
 	}
 
