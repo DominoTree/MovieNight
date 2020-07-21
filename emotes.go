@@ -89,7 +89,7 @@ func findEmotes(dir string, em common.EmotesMap) (common.EmotesMap, error) {
 	//em := NewEmotesMap()
 
 	fmt.Printf("finding emotes in %q\n", dir)
-	emotes, err := filepath.Glob(filepath.Join(dir, "*"))
+	emotes, err := filepath.Glob(filepath.Join(dir, "*.*"))
 	if err != nil {
 		return em, fmt.Errorf("unable to glob emote directory: %s\n", err)
 	}
