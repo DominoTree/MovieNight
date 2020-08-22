@@ -64,17 +64,18 @@ func emoteToHmtl2(key string) string {
 func ParseEmotesArray(words []string) []string {
 	newWords := []string{}
 	for _, word := range words {
+		wordLower := strings.ToLower(word)
 		found := false
 		if !WrappedEmotesOnly {
-			if val, ok := Emotes[word]; ok {
-				newWords = append(newWords, EmoteToHtml(val, word))
+			if val, ok := Emotes[wordLower]; ok {
+				newWords = append(newWords, EmoteToHtml(val, wordLower))
 				found = true
 			}
 		}
 
 		if !found {
-			word = reWrappedEmotes.ReplaceAllStringFunc(word, emoteToHmtl2)
-			newWords = append(newWords, word)
+			wordLower = reWrappedEmotes.ReplaceAllStringFunc(wordLower, emoteToHmtl2)
+			newWords = append(newWords, wordLower)
 		}
 	}
 
