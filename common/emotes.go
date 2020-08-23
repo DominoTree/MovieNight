@@ -74,8 +74,8 @@ func ParseEmotesArray(words []string) []string {
 		}
 
 		if !found {
-			wordLower = reWrappedEmotes.ReplaceAllStringFunc(wordLower, emoteToHmtl2)
-			newWords = append(newWords, wordLower)
+			//word = reWrappedEmotes.ReplaceAllStringFunc(wordLower, emoteToHmtl2)
+			newWords = append(newWords, word)
 		}
 	}
 
