@@ -43,7 +43,6 @@ type Settings struct {
 	TitleLength        int    // maximum length of the title that can be set with the /playing
 	TwitchClientID     string // client id from twitch developers portal
 	TwitchClientSecret string // OAuth from twitch developers portal: https://dev.twitch.tv/docs/authentication/getting-tokens-oauth#oauth-client-credentials-flow
-	WrappedEmotesOnly  bool   // only allow "wrapped" emotes.  eg :Kappa: and [Kappa] but not Kappa
 
 	// Rate limiting stuff, in seconds
 	RateLimitChat      time.Duration
@@ -133,11 +132,6 @@ func LoadSettings(filename string) (*Settings, error) {
 		s.RateLimitDuplicate = 30
 	} else if s.RateLimitDuplicate < 0 {
 		s.RateLimitDuplicate = 0
-	}
-
-	if s.WrappedEmotesOnly {
-		common.LogInfoln("Only allowing wrapped emotes")
-		common.WrappedEmotesOnly = true
 	}
 
 	// Print this stuff before we multiply it by time.Second

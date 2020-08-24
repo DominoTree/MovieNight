@@ -10,7 +10,6 @@ import (
 type EmotesMap map[string]string
 
 var Emotes EmotesMap
-var WrappedEmotesOnly bool = true
 
 var (
 	reStripStatic   = regexp.MustCompile(`^(\\|/)?static`)
@@ -53,7 +52,7 @@ func EmoteToHtml(file, title string) string {
 
 // Used with a regexp.ReplaceAllStringFunc() call. Needs to lookup the value as it
 // cannot be passed in with the regex function call.
-func emoteToHmtl2(key string) string {
+func emoteToHtml2(key string) string {
 	inkey := strings.ToLower(strings.Trim(key, ":[]"))
 	if val, ok := Emotes[inkey]; ok {
 		return fmt.Sprintf(`<img src="%s" height="36px" title="%s" />`, val, inkey)
@@ -64,18 +63,8 @@ func emoteToHmtl2(key string) string {
 func ParseEmotesArray(words []string) []string {
 	newWords := []string{}
 	for _, word := range words {
-		found := false
-		if !WrappedEmotesOnly {
-			if val, ok := Emotes[word]; ok {
-				newWords = append(newWords, EmoteToHtml(val, word))
-				found = true
-			}
-		}
-
-		if !found {
-			word = reWrappedEmotes.ReplaceAllStringFunc(word, emoteToHmtl2)
-			newWords = append(newWords, word)
-		}
+		word = reWrappedEmotes.ReplaceAllStringFunc(word, emoteToHtml2)
+		newWords = append(newWords, word)
 	}
 
 	return newWords
