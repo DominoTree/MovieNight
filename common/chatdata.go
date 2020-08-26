@@ -115,9 +115,9 @@ func (dc DataMessage) HTML() string {
 		badge := ""
 		switch dc.Level {
 		case CmdlMod:
-			badge = `<img src="/static/img/mod.png" class="badge" />`
+			badge = `💥&nbsp;`
 		case CmdlAdmin:
-			badge = `<img src="/static/img/admin.png" class="badge" />`
+			badge = `💥&nbsp;`
 		}
 		return `<span>` + badge + `<span class="name" style="color:` + dc.Color + `">` + dc.From +
 			`</span><b>:</b> <span class="msg">` + dc.Message + `</span></span>`
