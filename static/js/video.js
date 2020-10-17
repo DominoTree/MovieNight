@@ -1,6 +1,4 @@
 /// <reference path="./both.js" />
-
-
 function initPlayer() {
     if (!flvjs.isSupported()) {
         console.warn('flvjs not supported');
@@ -8,10 +6,18 @@ function initPlayer() {
     }
 
     let videoElement = document.querySelector("#videoElement");
+
+    let playerConfig = {
+        "stashInitialSize": "3125KB",
+        "lazyLoad": false,
+        "deferLoadAfterSourceOpen": false
+    };
+
     let flvPlayer = flvjs.createPlayer({
         type: "flv",
         url: "/live"
-    });
+    }, playerConfig);
+
     flvPlayer.attachMediaElement(videoElement);
     flvPlayer.load();
     flvPlayer.play();
