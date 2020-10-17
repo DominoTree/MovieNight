@@ -7,16 +7,19 @@ function initPlayer() {
 
     let videoElement = document.querySelector("#videoElement");
 
+    // https://github.com/bilibili/flv.js/blob/master/docs/api.md
+    let mediaDataSource = {
+        type: "flv",
+        url: "/live"
+    }
+
     let playerConfig = {
         "stashInitialSize": "3125KB",
         "lazyLoad": false,
         "deferLoadAfterSourceOpen": false
     };
 
-    let flvPlayer = flvjs.createPlayer({
-        type: "flv",
-        url: "/live"
-    }, playerConfig);
+    let flvPlayer = flvjs.createPlayer(mediaDataSource, playerConfig);
 
     flvPlayer.attachMediaElement(videoElement);
     flvPlayer.load();
