@@ -69,6 +69,14 @@ input[type=text] {
     padding: 5px 10px;
 }
 
+#reloadPlayer {
+    background: #992328;
+}
+
+#reloadPlayer:hover {
+    background: #cc2328;
+}
+
 .button {
     background: #232328;
     color: var(--var-message-color);
