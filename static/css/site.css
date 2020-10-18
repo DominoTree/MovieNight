@@ -206,6 +206,21 @@ input[type=text] {
     display: flex;
 }
 
+#noVideo {
+    color: #ffffff;
+    height: 100%;
+    width: 100%;
+    position: absolute;
+    background-color: rgba(0, 0, 0, 0.75);
+    z-index: 3;
+    text-align: center;
+    vertical-align: middle;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2;
+}
+
 #videoOverlay {
     height: 100%;
     width: 100%;
