@@ -41,9 +41,7 @@ func processEmoteDir(dir string) (common.EmotesMap, error) {
 			return nil
 		}
 
-		if slices.Contains([]string{".png", ".gif"}, filepath.Ext(fpath)) {
-			em = em.Add(path.Join("emotes", strings.TrimPrefix(filepath.ToSlash(fpath), dir)))
-		}
+		em = em.Add(path.Join("emotes", strings.TrimPrefix(filepath.ToSlash(fpath), dir)))
 
 		return nil
 	})
