@@ -125,7 +125,7 @@ input[type=text] {
 }
 
 .emote {
-    height: 28px;
+    max-height: 64px;
 }
 
 .notice {
