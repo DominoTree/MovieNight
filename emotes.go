@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/zorchenhimer/MovieNight/common"
-	"golang.org/x/exp/slices"
 )
 
 var emotesDir string
