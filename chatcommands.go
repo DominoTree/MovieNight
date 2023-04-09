@@ -68,7 +68,7 @@ var commands = &CommandControl{
 				// If the caller is privileged enough, they can change the color of another user
 				if len(args) == 2 {
 					if cl.CmdLevel == common.CmdlUser {
-						return "", newChatError("You cannot change someone else's color. PeepoSus")
+						return "", newChatError("You cannot change someone else's color.")
 					}
 
 					name, color := "", ""
@@ -255,7 +255,7 @@ var commands = &CommandControl{
 				// Two arguments to force a name change on another user: `/nick OldName NewName`
 				if len(args) == 2 {
 					if cl.CmdLevel == common.CmdlUser {
-						return "", newChatError("Only admins and mods can do that PeepoSus")
+						return "", newChatError("Only admins and mods can do that")
 					}
 
 					oldName = strings.TrimLeft(args[0], "@")
