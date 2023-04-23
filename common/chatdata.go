@@ -212,14 +212,14 @@ func (de DataEvent) HTML() string {
 	case EvNameChange:
 		de.Users = strings.Split(de.User, ":")
 		if len(de.Users) < 2 {
-			err = evNameChangeWC.Execute(buf, ParseEmotes("Jebaited"))
+			err = evNameChangeWC.Execute(buf, ParseEmotes(""))
 		} else {
 			err = evNameChange.Execute(buf, de)
 		}
 	case EvNameChangeForced:
 		de.Users = strings.Split(de.User, ":")
 		if len(de.Users) < 2 {
-			err = evNameChangeForcedWC.Execute(buf, ParseEmotes("Jebaited"))
+			err = evNameChangeForcedWC.Execute(buf, ParseEmotes(""))
 		} else {
 			err = evNameChangeForced.Execute(buf, de)
 		}

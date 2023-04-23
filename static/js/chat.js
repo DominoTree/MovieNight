@@ -119,6 +119,7 @@ function openChat() {
     $('#msg').val('');
     $('#msg').focus();
     inChat = true;
+    sendMessage('/users');
 }
 
 function closeChat() {

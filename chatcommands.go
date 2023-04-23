@@ -556,7 +556,7 @@ func (cc *CommandControl) RunCommand(command string, args []string, sender *Clie
 		}
 
 		common.LogInfof("[mod REJECTED] %s /%s %s\n", sender.name, command, strings.Join(args, " "))
-		return "", newChatError("You are not a mod Jebaited")
+		return "", newChatError("You are not a mod")
 	}
 
 	// Look for admin command
@@ -566,7 +566,7 @@ func (cc *CommandControl) RunCommand(command string, args []string, sender *Clie
 			return adminCmd.Function(sender, args)
 		}
 		common.LogInfof("[admin REJECTED] %s /%s %s\n", sender.name, command, strings.Join(args, " "))
-		return "", newChatError("You are not the admin Jebaited")
+		return "", newChatError("You are not the admin")
 	}
 
 	// Command not found
