@@ -1,0 +1,45 @@
+:root {
+	--bg: #0f0f11;
+	--fg: #f4f4f4;
+	--popout: #393940;
+	--border: #606060;
+	--accent: #1bf7ec;
+	--link: #a9c8c3;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+html,
+body {
+	margin: 0;
+	padding: 0;
+	height: 100%;
+	background: var(--bg);
+	color: var(--fg);
+	font-family: 'Hack', 'Menlo', 'Consolas', monospace;
+	font-size: 14px;
+}
+
+a {
+	color: var(--link);
+}
+
+.scrollbar {
+	scrollbar-color: #45009e transparent;
+	scrollbar-width: thin;
+}
+.scrollbar::-webkit-scrollbar {
+	width: 6px;
+}
+.scrollbar::-webkit-scrollbar-thumb {
+	background: #45009e;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	* {
+		animation-duration: 0.01ms !important;
+		transition-duration: 0.01ms !important;
+	}
+}
