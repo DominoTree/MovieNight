@@ -6,9 +6,9 @@ import (
 	"github.com/zorchenhimer/MovieNight/files"
 )
 
-func TestFSNil(t *testing.T) {
-	_, err := files.FS(nil, "", "")
+func TestFSMissingDir(t *testing.T) {
+	_, err := files.FS("/this/path/should/not/exist")
 	if err == nil {
-		t.Error("no error was returned when a nil fsys was passed in")
+		t.Error("no error returned for nonexistent static dir")
 	}
 }

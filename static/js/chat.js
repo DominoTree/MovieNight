@@ -665,6 +665,19 @@ function setupEvents() {
     var suggestionObserver = new MutationObserver(
         (mutations) => mutations.forEach(updateSuggestionCss)
     ).observe($('#suggestions')[0], { childList: true });
+
+    // Touch-friendly options menu: clicking #optionBox toggles .open. Hover
+    // still works on devices that support it.
+    $('#optionBox').on('click', (e) => {
+        e.stopPropagation();
+        const opened = $('#optionBox').toggleClass('open').hasClass('open');
+        $('#optionBox').attr('aria-expanded', opened);
+    });
+    $(document).on('click', (e) => {
+        if (!$(e.target).closest('#hidden, #optionBox').length) {
+            $('#optionBox').removeClass('open').attr('aria-expanded', 'false');
+        }
+    });
 }
 
 function join() {

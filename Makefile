@@ -15,9 +15,14 @@ endif
 
 TAGS= 
 
-.PHONY: fmt vet get clean dev setdev test docker ServerMovieNight 
+MEDIAMTX_VERSION ?= 1.9.3
+MEDIAMTX_OS := $(shell uname -s | tr '[:upper:]' '[:lower:]')
+MEDIAMTX_ARCH_RAW := $(shell uname -m)
+MEDIAMTX_ARCH := $(if $(filter x86_64,$(MEDIAMTX_ARCH_RAW)),amd64,$(if $(filter aarch64 arm64,$(MEDIAMTX_ARCH_RAW)),arm64v8,$(MEDIAMTX_ARCH_RAW)))
 
-all: fmt vet test MovieNight settings.json 
+.PHONY: fmt vet get clean dev setdev test ServerMovieNight download-mediamtx download-hls
+
+all: fmt vet test MovieNight settings.json
 
 server: ServerMovieNight 
 
@@ -41,12 +46,30 @@ fmt:
 vet: 
 	go$(GO_VERSION) vet $(TAGS) ./... 
 
-test: 
-	go$(GO_VERSION) test $(TAGS) ./... 
+test:
+	go$(GO_VERSION) test $(TAGS) ./...
 
-docker: fmt vet MovieNight settings.json 
+# Download mediamtx binary into ./bin (used as RTMP ingest + HLS muxer).
+# Override version with MEDIAMTX_VERSION=x.y.z.
+download-mediamtx:
+	@mkdir -p bin
+	@echo "Fetching mediamtx v$(MEDIAMTX_VERSION) for $(MEDIAMTX_OS)/$(MEDIAMTX_ARCH)..."
+	@curl -fSL "https://github.com/bluenviron/mediamtx/releases/download/v$(MEDIAMTX_VERSION)/mediamtx_v$(MEDIAMTX_VERSION)_$(MEDIAMTX_OS)_$(MEDIAMTX_ARCH).tar.gz" \
+		| tar -xz -C bin mediamtx
+	@chmod +x bin/mediamtx
+	@echo "mediamtx installed to ./bin/mediamtx"
+	@echo "Set MediamtxBinary in settings.json to \"./bin/mediamtx\" or copy to a directory on PATH."
+
+# Download hls.js (player library, served to browser clients).
+# The version must match the HlsJsVersion constant in main.go.
+HLS_JS_VERSION ?= 1.5.17
+download-hls:
+	@echo "Fetching hls.js v$(HLS_JS_VERSION)..."
+	@curl -fSL -o static/js/hls.min.$(HLS_JS_VERSION).js "https://cdn.jsdelivr.net/npm/hls.js@$(HLS_JS_VERSION)/dist/hls.min.js"
+	@echo "hls.js installed to static/js/hls.min.$(HLS_JS_VERSION).js"
+	@echo "Ensure HlsJsVersion in main.go matches $(HLS_JS_VERSION)."
 
 # Do not put settings_example.json here as a prereq to avoid overwriting
 # the settings if the example is updated.
-settings.json: 
-	cp settings_example.json settings.json 
+settings.json:
+	cp settings_example.json settings.json

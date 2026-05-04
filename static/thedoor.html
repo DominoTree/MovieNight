@@ -2,9 +2,12 @@
 
 {{define "body"}}
 <div id="doorentry">
-    {{if .Notice}}<div class="doornotice">{{.Notice}}</div>{{end}}
+    {{if .Notice}}<div class="doornotice" aria-live="polite">{{.Notice}}</div>{{end}}
     <form action="/" method="post">
-        <input type="text" name="txtInput" /><br />
+        <label for="txtInput" class="visually-hidden">PIN</label>
+        <input id="txtInput" type="text" name="txtInput"
+            autocapitalize="off" autocorrect="off" spellcheck="false"
+            autocomplete="off" autofocus /><br />
         <input type="submit" value="{{.SubmitText}}" class="button pretty-button" />
     </form>
 </div>

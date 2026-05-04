@@ -257,7 +257,9 @@ input[type=text] {
 }
 
 #hidden:hover,
-#optionBox:hover~#hidden {
+#optionBox:hover~#hidden,
+#optionBox.open~#hidden,
+#hidden:focus-within {
     display: unset;
 }
 
@@ -267,6 +269,20 @@ input[type=text] {
     font-weight: bold;
     font-size: 12px;
     text-align: center;
+}
+
+#optionBox {
+    background: transparent;
+    border: var(--var-border);
+    border-radius: var(--var-border-radius);
+    cursor: pointer;
+    padding: 4px 8px;
+    font-family: inherit;
+}
+
+#optionBox:hover,
+#optionBox.open {
+    background: var(--var-popout-color);
 }
 
 #accessRequest div {
@@ -285,6 +301,11 @@ input[type=text] {
 #playing {
     color: #288a85;
     font-size: x-Large;
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 #chatButtons {
@@ -437,4 +458,88 @@ input[type=text] {
   .combined #chatwindow {
     max-height: calc(var(--var-max-height) - 56.25vw);
   }
+}
+
+/* Landscape phone/small tablet: side-by-side video + chat */
+@media screen and (max-width: 900px) and (orientation: landscape) {
+  .combined {
+    grid-template-columns: 2fr 1fr;
+    grid-template-rows: 1fr;
+  }
+
+  .combined #chatwindow {
+    max-height: var(--var-max-height);
+  }
+}
+
+#videoElement {
+  max-height: var(--var-max-height);
+  object-fit: contain;
+  background: #000;
+}
+
+/* Chat message classes referenced from chat.js */
+span.event {
+    font-style: italic;
+    color: #8a8a92;
+}
+
+span.error {
+    color: #e82222;
+    font-weight: bold;
+}
+
+span.time {
+    color: #6a6a72;
+    font-size: 11px;
+    margin-right: 4px;
+}
+
+/* Visually hidden but accessible to screen readers (WCAG technique). */
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Prevent iOS Safari from auto-zooming on input focus (font-size < 16px triggers zoom). */
+@media screen and (max-width: 768px) {
+    #msg,
+    #name,
+    #txtInput,
+    input[type="text"],
+    input[type="password"],
+    input[type="email"],
+    input[type="search"],
+    input[type="number"],
+    select,
+    textarea {
+        font-size: 16px;
+    }
+
+    /* Larger touch targets on phones (WCAG 2.5.5 ~44x44 px minimum). */
+    .button,
+    .pretty-button {
+        min-height: 44px;
+        padding: 10px 14px;
+    }
+
+    #optionBox {
+        min-height: 36px;
+        padding: 8px 12px;
+    }
+}
+
+/* Respect users who prefer reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+    }
 }

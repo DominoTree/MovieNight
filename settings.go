@@ -37,12 +37,18 @@ type Settings struct {
 	RegenAdminPass    bool   // regenerate admin password on start?
 	RoomAccess        AccessMode
 	RoomAccessPin     string // The current pin
-	RtmpListenAddress string // host:port that the RTMP server listens on
+	RtmpListenAddress string // host:port that the RTMP server listens on (mediamtx)
 	SessionKey        string // key for session data
 	StreamKey         string
 	StreamStats       bool
 	TitleLength       int  // maximum length of the title that can be set with the /playing
 	WrappedEmotesOnly bool // only allow "wrapped" emotes.  eg :Kappa: and [Kappa] but not Kappa
+
+	// mediamtx subprocess configuration
+	MediamtxBinary     string // path to mediamtx binary (default looked up in PATH)
+	MediamtxHlsAddress string // host:port for mediamtx HLS server (internal, default 127.0.0.1:8888)
+	MediamtxApiAddress string // host:port for mediamtx control API (internal, default 127.0.0.1:9997)
+	MediamtxConfigPath string // generated mediamtx config path (default in os.TempDir)
 
 	// Rate limiting stuff, in seconds
 	RateLimitChat      time.Duration
@@ -155,6 +161,19 @@ func LoadSettings(filename string) (*Settings, error) {
 
 	if len(s.RoomAccess) == 0 {
 		s.RoomAccess = AccessOpen
+	}
+
+	if s.MediamtxBinary == "" {
+		s.MediamtxBinary = "mediamtx"
+	}
+	if s.MediamtxHlsAddress == "" {
+		s.MediamtxHlsAddress = "127.0.0.1:8888"
+	}
+	if s.MediamtxApiAddress == "" {
+		s.MediamtxApiAddress = "127.0.0.1:9997"
+	}
+	if s.RtmpListenAddress == "" {
+		s.RtmpListenAddress = ":1935"
 	}
 
 	if (s.RoomAccess != AccessOpen && len(s.RoomAccessPin) == 0) || s.NewPin {

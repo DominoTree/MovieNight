@@ -4,148 +4,175 @@
     - [Build requirements](#build-requirements)
         - [Older Go Versions](#older-go-versions)
         - [Compile and install](#compile-and-install)
-        - [Docker build](#docker-build)
-            - [Building the Container](#building-the-container)
-            - [Running the Container](#running-the-container)
-            - [docker-compose](#docker-compose)
-            - [Notes for Running Using docker-compose](#notes-for-running-using-docker-compose)
+        - [Install mediamtx](#install-mediamtx)
+        - [Install hls.js](#install-hlsjs)
         - [FreeNAS / TrueNAS / FreeBSD build and run](#freenas-freebsd-build-and-run)
     - [Usage](#usage)
+    - [Reverse proxy](#reverse-proxy)
     - [Configuration](#configuration)
 
 <!-- markdown-toc end -->
 # MovieNight stream server
 [![Build status](https://api.travis-ci.org/zorchenhimer/MovieNight.svg?branch=master)](https://travis-ci.org/zorchenhimer/MovieNight)
 
-This is a single-instance streaming server with chat.  Originally written to
+This is a single-instance streaming server with chat. Originally written to
 replace Rabbit as the platform for watching movies with a group of people
 online.
 
+Streaming pipeline: OBS → RTMP ingest (`mediamtx`) → HLS Low-Latency → browser
+(`hls.js`, or native HLS on Safari/iOS).
+
 ## Build requirements
-- Go 1.16 or newer
+- Go 1.18 or newer
 - GNU Make
+- `mediamtx` binary (handles RTMP ingest + HLS muxing). See [Install mediamtx](#install-mediamtx) below.
+- `hls.js` (browser-side player). See [Install hls.js](#install-hlsjs) below.
 
 ### Older Go Versions
 You can install a newer version of Go alongside your OS's distribution by
 following the guide here: [https://golang.org/doc/manage-install](https://golang.org/doc/manage-install)
 
-Once you have that setup add an enviromnent variable named `GO_VERSION` and
-set it to the version you installed (eg, `1.16.1`).  The Makefile will now use
+Once you have that setup add an environment variable named `GO_VERSION` and
+set it to the version you installed (eg, `1.18.10`). The Makefile will now use
 the newer version.
 
 ### Compile and install
-You have to : 
-- download `git clone https://github.com/zorchenhimer/MovieNight`, go into the source directory `cd MovieNight`;
-- run `go build`
-
-If you want to cross compile instead of running `go build`:
-- choose your `TARGET` oneof "android darwin dragonfly freebsd linux nacl netbsd openbsd plan9 solaris windows";
-- choose your `ARCH` oneof "386 amd64 amd64p32 arm arm64 ppc64 ppc64le mips mipsle mips64 mips64le mips64p32 mips64p32leppc s390 s390x sparc sparc64";
-- build `make TARGET=windows ARCH=386` (On BSD systems use `gmake`);
-- and run `./MovieNight`;
-
-Example :
 ```shell
-$ git clone https://github.com/zorchenhimer/MovieNight
-$ cd MovieNight
-$ (make|gmake) TARGET=windows ARCH=386
-$ ./MovieNight
+git clone https://github.com/zorchenhimer/MovieNight
+cd MovieNight
+make download-mediamtx
+make download-hls
+make
+./MovieNight
 ```
 
-### Docker build
-MovieNight provides a Dockerfile and a docker-compose file to run MovieNight using Docker.
+For cross-compilation:
+- Choose your `TARGET` (one of: `android darwin dragonfly freebsd linux nacl netbsd openbsd plan9 solaris windows`)
+- Choose your `ARCH` (one of: `386 amd64 arm arm64 ppc64 ppc64le mips mipsle mips64 mips64le s390x sparc sparc64`)
+- Build: `make TARGET=windows ARCH=386` (on BSD systems use `gmake`)
 
-#### Building the Container
-Install Docker, clone the repository and build:
+### Install mediamtx
+`mediamtx` is a separate process that MovieNight spawns and supervises. It
+accepts RTMP from OBS and outputs HLS-LL.
 
+Use the Makefile target (downloads to `./bin/mediamtx`):
 ```shell
-docker build -t movienight .
+make download-mediamtx
 ```
 
-#### Running the Container
-Run the image once it's built:
-
+Or download manually from https://github.com/bluenviron/mediamtx/releases and
+place the binary somewhere on your `PATH`. Override the version:
 ```shell
-# with default settings file (this uses the settings_example.json config file)
-docker run -d -p 8089:8089 -p 1935:1935 movienight
-
-# using a custom settings file
-docker run -d -p 8089:8089 -p 1935:1935 -v ./settings.json:/data/config/settings.json movienight
+make download-mediamtx MEDIAMTX_VERSION=1.9.3
 ```
 
-Explanation:
-- **-d** runs the container in the background.
-- **-p 8089:8089** maps the MovieNight web interface to port 8089 on the server.
-- **-p 1935:1935** maps the RTMP port for OBS to port 1935 (default RTMP port) on the server.
-- **-v ./settings.json:/config/settings.json** maps the file *settings.json* into the container. [OPTIONAL]
+If `mediamtx` is not on your `PATH`, set `MediamtxBinary` in `settings.json` to
+the absolute path (e.g., `./bin/mediamtx`).
 
-#### docker-compose
-docker-compose will automatically build the image, no need to build it manually.
-
-Install Docker and docker-compose, clone the repository and change into the directory *./docker*. Then run:
-
+### Install hls.js
+The browser-side player library is downloaded into `static/js/`:
 ```shell
-docker-compose up -d
+make download-hls
 ```
-
-This docker-compose file will create a volume called *movienight-config* and automatically add the standard *settings.json* file to it. It also maps port 8089 and 1935 to the same ports of the host.
-
-#### Notes for Running Using docker-compose
-The container needs to be restarted to apply any changes you make to *settings.json*.
+Override the version with `HLS_JS_VERSION=1.5.17`.
 
 ### FreeNAS-FreeBSD build and run
-A [FreeNAS & TrueNAS plugin](https://github.com/zorglube/iocage-plugin-movienight) had been released. You should find MovieNight into the plugin section of you management GUI. However you still can make an manual plugin deployment, documentation [here](https://github.com/freenas/iocage-ix-plugins)
-If you prefer to make an Jail without using the plugin management, a script wich setup an Jail and build and run MovieNight into that Jail as been written, you'll find it here [freenas-iocage-movienight](https://github.com/zorglube/freenas-iocage-movienight)  
+A [FreeNAS & TrueNAS plugin](https://github.com/zorglube/iocage-plugin-movienight) had been released. You should find MovieNight into the plugin section of you management GUI. However you still can make an manual plugin deployment, documentation [here](https://github.com/freenas/iocage-ix-plugins).
+
+If you prefer to make a Jail without using the plugin management, a script which sets up an Jail and builds and runs MovieNight into that Jail has been written: [freenas-iocage-movienight](https://github.com/zorglube/freenas-iocage-movienight).
 
 ## Usage
-Now you can use OBS to push a stream to the server.  Set the stream URL to
-
+Configure OBS to push a stream to:
 ```text
-rtmp://your.domain.host/live
+rtmp://your.domain.host:1935/live
 ```
+with **Stream Key** set to the value of `StreamKey` in `settings.json`.
+Internally, mediamtx receives the publish at the path `live/<StreamKey>`. The
+auth webhook validates the key.
 
-and enter the stream key.
-
-Now you can view the stream at
-
+View the stream at:
 ```text
 http://your.domain.host:8089/
 ```
 
-There is a video only version at
-
+Video-only and chat-only views:
 ```text
 http://your.domain.host:8089/video
-```
-
-and a chat only version at
-
-```text
 http://your.domain.host:8089/chat
 ```
 
-The default listen port is `:8089`.  It can be changed by providing a new port
-at startup:
+The HLS playlist is served at `/hls/index.m3u8` (proxied through MovieNight so
+the stream key is not exposed).
 
+CLI flags:
 ```text
-Usage of .\MovieNight.exe:
-  -e bool
-        Whether or not to download approved emotes on startup (default "false")
-  -k string
-        Stream key, to protect your stream (default: "")
-  -l string
-        host:port of the MovieNight (default ":8089")
-  -r string
-        host:port of the RTMP server (default ":1935")
-  -f string
-        the settings file you want to use (default "./settings.json")
+Usage of ./MovieNight:
+  -k string     Stream key, to protect your stream
+  -l string     host:port of the HTTP server (default :8089)
+  -r string     host:port of the RTMP server (passed to mediamtx, default :1935)
+  -f string     the settings file you want to use (default ./settings.json)
+  -a string     admin password override
+  -s string     directory containing the static/ tree (default: binary's directory)
+  --emotes string   directory to read emotes from
 ```
 
+### Static assets layout
+
+MovieNight reads HTML templates and static assets (JS, CSS, images) from
+disk only — there is no embedded fallback. The `static/` tree must exist
+alongside the binary (or wherever `--static` points). A typical layout:
+
+```
+/opt/movienight/
+├── MovieNight
+├── settings.json
+├── emotes/
+└── static/
+    ├── base.html
+    ├── main.html
+    ├── ...
+    ├── css/
+    ├── img/
+    └── js/
+        ├── hls.min.1.5.17.js
+        ├── video.js
+        └── ...
+```
+
+### Codec requirements
+mediamtx HLS-LL output uses the codecs the publisher provides. For maximum
+browser compatibility, configure OBS to use:
+- Video: H.264 (x264)
+- Audio: AAC
+
+HEVC, AV1, or Opus may not play in all browsers.
+
+## Reverse proxy
+Behind nginx, disable buffering on HLS:
+```nginx
+location / {
+    proxy_pass http://127.0.0.1:8089;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+}
+
+location /hls/ {
+    proxy_pass http://127.0.0.1:8089;
+    proxy_buffering off;
+    proxy_cache off;
+}
+```
+
+You only need to expose ports `8089` (HTTP) and `1935` (RTMP) to the public
+internet. The mediamtx HLS port (default `127.0.0.1:8888`) and API port
+(default `127.0.0.1:9997`) bind to loopback.
+
 ## Configuration
-MovieNight’s configuration is controlled by `settings.json`:
+MovieNight's configuration is controlled by `settings.json`:
 
 - `AdminPassword`: users can enter `/auth <value>` into chat to grant themselves
-  admin privileges.  This value is automatically regenerated unless
+  admin privileges. This value is automatically regenerated unless
   `RegenAdminPass` is false.
 - `Bans`: list of banned users.
 - `LetThemLurk`: if false, announces when a user enters and leaves chat.
@@ -154,27 +181,38 @@ MovieNight’s configuration is controlled by `settings.json`:
 - `LogLevel`: the log level, defaults to `debug`.
 - `MaxMessageCount`: the number of messages displayed in the chat window.
 - `NewPin`: if true, regenerates `RoomAccessPin` when the server starts.
-- `PageTitle`: The base string used in the `<title>` element of the page.  When
-  the stream title is set with `/playing`, it is appended; e.g., `Movie Night | The Man Who Killed Hitler and Then the Bigfoot`
+- `PageTitle`: the base string used in the `<title>` element of the page. When
+  the stream title is set with `/playing`, it is appended; e.g.,
+  `Movie Night | The Man Who Killed Hitler and Then the Bigfoot`.
 - `RegenAdminPass`: if true, regenerates `AdminPassword` when the server starts.
 - `RoomAccess`: the access policy of the chat room; this is managed by the
   application and should not be edited manually.
 - `RoomAccessPin`: if set, serves as the password required to enter the chatroom.
-- `SessionKey`: key used for storing session data (cookies etc.)
+- `RtmpListenAddress`: host:port that mediamtx accepts RTMP on (default `:1935`).
+- `SessionKey`: key used for storing session data (cookies etc.).
 - `StreamKey`: the key that OBS will use to connect to MovieNight.
 - `StreamStats`: if true, prints statistics for the stream on server shutdown.
 - `TitleLength`: the maximum allowed length for the stream title (set with `/playing`).
 - `WrappedEmotesOnly`: if true, requires that emote codes be wrapped in colons
-  or brackets; e.g., `:PogChamp:`
+  or brackets; e.g., `:PogChamp:`.
 - `RateLimitChat`: the number of seconds between each message a non-privileged
   user can post in chat.
 - `RateLimitNick`: the number of seconds before a user can change their nick again.
-- `RakeLimitColor`: the number of seconds before a user can change their color again.
-- `RateLimitAuth`: the number of seconds between each allowed auth attempt
-- `RateLimitDuplicate`: the numeber of seconds before a user can post a
+- `RateLimitColor`: the number of seconds before a user can change their color again.
+- `RateLimitAuth`: the number of seconds between each allowed auth attempt.
+- `RateLimitDuplicate`: the number of seconds before a user can post a
   duplicate message.
 - `NoCache`: if true, set `Cache-Control: no-cache, must-revalidate` in the HTTP
   header, to prevent caching responses.
+- `MediamtxBinary`: path to the mediamtx binary (default `mediamtx`, looked up
+  on `PATH`).
+- `MediamtxHlsAddress`: host:port for mediamtx's internal HLS server (default
+  `127.0.0.1:8888`). MovieNight reverse-proxies this.
+- `MediamtxApiAddress`: host:port for mediamtx's control API (default
+  `127.0.0.1:9997`). MovieNight queries this to discover the active stream.
+- `MediamtxConfigPath`: path where MovieNight writes the generated mediamtx
+  config (default in `os.TempDir()`).
 
 ## License
-`flv.js` is Licensed under the Apache 2.0 license.  This project is licened under the MIT license.
+`hls.js` is licensed under the Apache 2.0 license. `mediamtx` is licensed
+under the MIT license. This project is licensed under the MIT license.

@@ -37,6 +37,15 @@ settings.json
 # vscode
 .vscode
 
+# Deploy scratch dir (used by agent for staging files into root-owned paths)
+.deploy/
+
+# hls.js downloaded by `make download-hls`; not vendored in git
+static/js/hls.min.*.js
+
+# mediamtx binary downloaded by `make download-mediamtx`
+bin/
+
 # tags for vim
 tags
 

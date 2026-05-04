@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"embed"
 	"errors"
 	"fmt"
 	"log"
@@ -13,14 +12,14 @@ import (
 
 	"github.com/alexflint/go-arg"
 	"github.com/gorilla/sessions"
-	"github.com/nareix/joy4/format"
-	"github.com/nareix/joy4/format/rtmp"
 	"github.com/zorchenhimer/MovieNight/common"
 	"github.com/zorchenhimer/MovieNight/files"
 )
 
-//go:embed static/*.html static/css static/img static/js
-var staticFS embed.FS
+// HlsJsVersion is the version of hls.js shipped under static/js/.
+// Bumping this requires updating the Makefile HLS_JS_VERSION default and
+// running `make download-hls` to fetch the new file.
+const HlsJsVersion = "1.5.17"
 
 var stats = newStreamStats()
 
@@ -54,14 +53,13 @@ func setupSettings(adminPass string, confFile string) error {
 }
 
 type args struct {
-	Addr        string `arg:"-l,--addr" help:"host:port of the HTTP server"`
-	RtmpAddr    string `arg:"-r,--rtmp" help:"host:port of the RTMP server"`
-	StreamKey   string `arg:"-k,--key" help:"Stream key, to protect your stream"`
-	AdminPass   string `arg:"-a,--admin" help:"Set admin password. Overrides configuration in settings.json. This will not write the password to settings.json."`
-	ConfigFile  string `arg:"-f,--config" help:"URI of the conf file"`
-	StaticDir   string `arg:"-s,--static" help:"Directory to read static files from by default"`
-	EmotesDir   string `arg:"-e,--emotes" help:"Directory to read emotes. By default it uses the executable directory"`
-	WriteStatic bool   `arg:"--write-static" help:"write static files to the static dir"`
+	Addr       string `arg:"-l,--addr" help:"host:port of the HTTP server"`
+	RtmpAddr   string `arg:"-r,--rtmp" help:"host:port of the RTMP server (passed to mediamtx)"`
+	StreamKey  string `arg:"-k,--key" help:"Stream key, to protect your stream"`
+	AdminPass  string `arg:"-a,--admin" help:"Set admin password. Overrides configuration in settings.json. This will not write the password to settings.json."`
+	ConfigFile string `arg:"-f,--config" help:"URI of the conf file"`
+	StaticDir  string `arg:"-s,--static" help:"Directory containing the 'static/' tree of HTML/CSS/JS/img assets. Defaults to the binary's directory."`
+	EmotesDir  string `arg:"-e,--emotes" help:"Directory to read emotes. By default it uses the executable directory"`
 }
 
 func main() {
@@ -79,20 +77,10 @@ func run(args args) {
 		emotesDir = files.JoinRunPath("emotes")
 	}
 
-	staticFsys, err := files.FS(staticFS, args.StaticDir, "static")
+	staticFsys, err := files.FS(args.StaticDir)
 	if err != nil {
 		log.Fatalf("Error creating static FS: %v\n", err)
 	}
-
-	if args.WriteStatic {
-		count, err := staticFsys.WriteFiles(".")
-		fmt.Printf("%d files were writen to disk\n", count)
-		if err != nil {
-			log.Fatalf("Error writing files to static dir %q: %v\n", args.StaticDir, err)
-		}
-	}
-
-	format.RegisterAll()
 
 	if err := setupSettings(args.AdminPass, args.ConfigFile); err != nil {
 		log.Fatalf("Error loading settings: %v\n", err)
@@ -115,10 +103,15 @@ func run(args args) {
 
 	if args.Addr == "" {
 		args.Addr = settings.ListenAddress
+	} else {
+		// Apply CLI override into settings so mediamtx auth callback URL is correct.
+		settings.ListenAddress = args.Addr
 	}
 
 	if args.RtmpAddr == "" {
 		args.RtmpAddr = settings.RtmpListenAddress
+	} else {
+		settings.RtmpListenAddress = args.RtmpAddr
 	}
 
 	// A stream key was passed on the command line.  Use it, but don't save
@@ -130,14 +123,16 @@ func run(args args) {
 	common.LogInfoln("Stream key: ", settings.GetStreamKey())
 	common.LogInfoln("Admin password: ", settings.AdminPassword)
 	common.LogInfoln("HTTP server listening on: ", args.Addr)
-	common.LogInfoln("RTMP server listening on: ", args.RtmpAddr)
+	common.LogInfoln("RTMP server listening on: ", settings.RtmpListenAddress)
 	common.LogInfoln("RoomAccess: ", settings.RoomAccess)
 	common.LogInfoln("RoomAccessPin: ", settings.RoomAccessPin)
 
-	rtmpServer := &rtmp.Server{
-		HandlePlay:    handlePlay,
-		HandlePublish: handlePublish,
-		Addr:          args.RtmpAddr,
+	if err := initProxies(); err != nil {
+		log.Fatalf("Error initializing proxies: %v\n", err)
+	}
+
+	if err := mediamtx.start(); err != nil {
+		log.Fatalf("Error starting mediamtx: %v\n", err)
 	}
 
 	router := http.NewServeMux()
@@ -151,22 +146,16 @@ func run(args args) {
 	router.HandleFunc("/help", wrapAuth(handleHelpTemplate))
 	router.HandleFunc("/emotes", wrapAuth(handleEmoteTemplate))
 
-	router.HandleFunc("/live", wrapAuth(handleLive))
+	router.HandleFunc("/auth/mediamtx", handleMediamtxAuth)
+	router.HandleFunc("/hls/", wrapAuth(handleHLS))
+	router.HandleFunc("/hls", wrapAuth(handleHLS))
+
 	router.HandleFunc("/", wrapAuth(handleDefault))
 
 	httpServer := &http.Server{
 		Addr:    args.Addr,
 		Handler: router,
 	}
-
-	// RTMP Server
-	go func() {
-		err := rtmpServer.ListenAndServe()
-		if err != nil {
-			// If the server cannot start, don't pretend we can continue.
-			panic("Error trying to start rtmp server: " + err.Error())
-		}
-	}()
 
 	// HTTP Server
 	go func() {
@@ -181,16 +170,14 @@ func run(args args) {
 
 	<-exit
 
+	mediamtx.stop()
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	if err := httpServer.Shutdown(ctx); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		panic("Gracefull HTTP server shutdown failed: " + err.Error())
 	}
-
-	// I don't think the RTMP server can be shutdown cleanly.  Apparently the author
-	// of joy4 want's everyone to use joy5, but that one doesn't seem to allow clean
-	// shutdowns either? Idk, the documentation on joy4 and joy5 are non-existent.
 }
 
 func handleInterrupt(exit chan bool) {

@@ -1,15 +1,15 @@
 {{define "header"}}
 <script>pageTitle = {{ .Title }}</script>
 {{if .Chat}}
-<script type="application/javascript" src="/static/js/chat.js"></script>
+<script defer type="application/javascript" src="/static/js/chat.js"></script>
 <script>
     maxMessageCount = {{.MessageHistoryCount }}
 </script>
 {{end}}
 
 {{if .Video}}
-<script type="application/javascript" src="/static/js/flv.min.js"></script>
-<script type="application/javascript" src="/static/js/video.js"></script>
+<script defer type="application/javascript" src="/static/js/{{.HlsJsFile}}"></script>
+<script defer type="application/javascript" src="/static/js/video.js"></script>
 {{end}}
 
 {{/* end define header */}}
@@ -27,21 +27,24 @@
 
 {{if .Video}}
 <div id="videoWrapper">
-    <div id="videoOverlay">
-        <img src="/static/img/mute-icon.png" />
+    <div id="videoOverlay" role="button" tabindex="0" aria-label="Tap to unmute">
+        <img src="/static/img/mute-icon.png" alt="" />
     </div>
-    <video id="videoElement" x5-video-player-type="h5" x5-video-player-fullscreen="true" playsinline webkit-playsinline
+    <video id="videoElement"
+        x5-video-player-type="h5" x5-video-player-fullscreen="true"
+        playsinline webkit-playsinline x-webkit-airplay="allow"
+        controlslist="nodownload"
         autoplay muted controls>
-        Your browser is too old and doesn't support HTML5 video.
+        Your browser does not support HTML5 video.
     </video>
 </div>
 {{end}}
 
 {{if .Chat}}
 <div id="chatwindow">
-    <div id="notifyBox"></div>
+    <div id="notifyBox" aria-live="polite"></div>
     <div id="chat" style="display: none;">
-        <div id="optionBox">Please hover to view options</div>
+        <button id="optionBox" type="button" aria-label="Toggle options menu" aria-expanded="false">Options</button>
         <div id="hidden">
             <div id="chatButtons">
                 <input type="button" class="button pretty-button" onclick="auth();" value="Auth" />
@@ -79,17 +82,20 @@
                 </div>
                 <div id="colorWarning" class="range-div contrast">
                 </div>
-                <dvi class="range-div">
+                <div class="range-div">
                     <input id="colorSubmit" type="button" class="button pretty-button" value="Select"
                         onclick="changeColor();" />
-                </dvi>
+                </div>
             </div>
         </div>
-        <a id="playing" target="_blank"></a>
-        <div id="messages" class="scrollbar"></div>
+        <a id="playing" target="_blank" rel="noopener noreferrer"></a>
+        <div id="messages" class="scrollbar" role="log" aria-live="polite" aria-relevant="additions" aria-label="Chat messages"></div>
         <div id="msgbox">
-            <div id="suggestions" class="scrollbar" style="display: none;"></div>
-            <textarea id="msg"></textarea>
+            <div id="suggestions" class="scrollbar" style="display: none;" role="listbox" aria-label="Suggestions"></div>
+            <label for="msg" class="visually-hidden">Chat message</label>
+            <textarea id="msg" aria-label="Chat message"
+                autocapitalize="off" autocorrect="off" spellcheck="true"
+                autocomplete="off"></textarea>
         </div>
         <input id="send" type="button" class="button" onclick="sendChat();" value="Send" />
         <div>
@@ -99,7 +105,11 @@
     <div id="joinbox">
         <div style="color: #e5e0e5; text-align: center;">Please enter your name<br />to join the chat</div>
         <div>
-            <input id="name" type="text" maxlength="36">
+            <label for="name" class="visually-hidden">Your name</label>
+            <input id="name" type="text" maxlength="36"
+                aria-label="Your name"
+                autocapitalize="off" autocorrect="off" spellcheck="false"
+                autocomplete="username">
             <input id="join" type="button" class="button pretty-button" onclick="join();" value="Join" />
             {{if .Video}}
             <div style="display: flex; flex-direction: column; align-items: center;">

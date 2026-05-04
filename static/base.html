@@ -1,15 +1,18 @@
 <!doctype html>
-<html>
+<html lang="en">
 
 <head>
     <meta charset='utf-8'>
-    <meta name="viewport" content="width=device-width, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0F0F11">
+    <meta name="color-scheme" content="dark">
     <title>{{ .Title }}</title>
+    <link rel="icon" type="image/png" href="/static/img/favicon.png">
     <link rel="stylesheet" type="text/css" href="/static/css/hack/hack.css">
     <link rel="stylesheet" type="text/css" href="/static/css/site.css">
-    <script type="application/javascript" src="/static/js/jquery.js"></script>
-    <script type="application/javascript" src="/static/js/both.js"></script>
-    <script type="application/javascript" src="/static/js/consts.js"></script>
+    <script defer type="application/javascript" src="/static/js/jquery.js"></script>
+    <script defer type="application/javascript" src="/static/js/both.js"></script>
+    <script defer type="application/javascript" src="/static/js/consts.js"></script>
     {{template "header" .}}
 </head>
 

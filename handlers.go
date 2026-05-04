@@ -3,45 +3,53 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"io"
+	"fmt"
 	"io/fs"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 
 	"github.com/zorchenhimer/MovieNight/common"
 
 	"github.com/gorilla/websocket"
-	"github.com/nareix/joy4/av/avutil"
-	"github.com/nareix/joy4/av/pubsub"
-	"github.com/nareix/joy4/format/flv"
-	"github.com/nareix/joy4/format/rtmp"
 )
 
-var (
-	//global variable for handling all chat traffic
-	chat *ChatRoom
+// global variable for handling all chat traffic
+var chat *ChatRoom
 
-	// Read/Write mutex for rtmp stream
-	l = &sync.RWMutex{}
+// HLS reverse proxy targeting the local mediamtx HLS server.
+var hlsProxy *httputil.ReverseProxy
 
-	// Map of active streams
-	channels = map[string]*Channel{}
-)
+// initProxies must be called after settings are loaded.
+func initProxies() error {
+	u, err := url.Parse("http://" + settings.MediamtxHlsAddress)
+	if err != nil {
+		return fmt.Errorf("invalid MediamtxHlsAddress: %w", err)
+	}
+	hlsProxy = httputil.NewSingleHostReverseProxy(u)
 
-type Channel struct {
-	que *pubsub.Queue
-}
-
-type writeFlusher struct {
-	httpflusher http.Flusher
-	io.Writer
-}
-
-func (w writeFlusher) Flush() error {
-	w.httpflusher.Flush()
+	// mediamtx 302-redirects HLS requests to its canonical path (e.g.
+	// "/live/<key>/index.m3u8?cookieCheck=1") with a cookie check. We must
+	// rewrite the Location header to keep the "/hls/" prefix so the stream
+	// key is not leaked to the browser.
+	hlsProxy.ModifyResponse = func(resp *http.Response) error {
+		loc := resp.Header.Get("Location")
+		if loc == "" {
+			return nil
+		}
+		path := activePath.get()
+		if path == "" {
+			return nil
+		}
+		prefix := "/" + path
+		if strings.HasPrefix(loc, prefix) {
+			resp.Header.Set("Location", "/hls"+strings.TrimPrefix(loc, prefix))
+		}
+		return nil
+	}
 	return nil
 }
 
@@ -323,6 +331,7 @@ func handleIndexTemplate(w http.ResponseWriter, r *http.Request) {
 		Video, Chat         bool
 		MessageHistoryCount int
 		Title               string
+		HlsJsFile           string
 	}
 
 	data := Data{
@@ -330,6 +339,7 @@ func handleIndexTemplate(w http.ResponseWriter, r *http.Request) {
 		Chat:                true,
 		MessageHistoryCount: settings.MaxMessageCount,
 		Title:               settings.PageTitle,
+		HlsJsFile:           fmt.Sprintf("hls.min.%s.js", HlsJsVersion),
 	}
 
 	path := strings.Split(strings.TrimLeft(r.URL.Path, "/"), "/")
@@ -352,112 +362,92 @@ func handleIndexTemplate(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func handlePublish(conn *rtmp.Conn) {
-	streams, _ := conn.Streams()
-
-	l.Lock()
-	common.LogDebugln("request string->", conn.URL.RequestURI())
-	urlParts := strings.Split(strings.Trim(conn.URL.RequestURI(), "/"), "/")
-	common.LogDebugln("urlParts->", urlParts)
-
-	if len(urlParts) > 2 {
-		common.LogErrorln("Extra garbage after stream key")
-		l.Unlock()
-		conn.Close()
-		return
-	}
-
-	if len(urlParts) != 2 {
-		common.LogErrorln("Missing stream key")
-		l.Unlock()
-		conn.Close()
-		return
-	}
-
-	if urlParts[1] != settings.GetStreamKey() {
-		common.LogErrorln("Stream key is incorrect.  Denying stream.")
-		l.Unlock()
-		conn.Close()
-		return //If key not match, deny stream
-	}
-
-	streamPath := urlParts[0]
-	_, exists := channels[streamPath]
-	if exists {
-		common.LogErrorln("Stream already running.  Denying publish.")
-		conn.Close()
-		l.Unlock()
-		return
-	}
-
-	ch := &Channel{}
-	ch.que = pubsub.NewQueue()
-	err := ch.que.WriteHeader(streams)
-	if err != nil {
-		common.LogErrorf("Could not write header to streams: %v\n", err)
-	}
-	channels[streamPath] = ch
-	l.Unlock()
-
-	stats.startStream()
-
-	common.LogInfoln("Stream started")
-	err = avutil.CopyPackets(ch.que, conn)
-	if err != nil {
-		common.LogErrorf("Could not copy packets to connections: %v\n", err)
-	}
-	common.LogInfoln("Stream finished")
-
-	stats.endStream()
-
-	l.Lock()
-	delete(channels, streamPath)
-	l.Unlock()
-	ch.que.Close()
+// mediamtxAuthRequest matches the JSON body mediamtx POSTs to the auth webhook.
+// See https://github.com/bluenviron/mediamtx#authentication
+type mediamtxAuthRequest struct {
+	User     string `json:"user"`
+	Password string `json:"password"`
+	IP       string `json:"ip"`
+	Action   string `json:"action"`
+	Path     string `json:"path"`
+	Protocol string `json:"protocol"`
+	ID       string `json:"id"`
+	Query    string `json:"query"`
 }
 
-func handlePlay(conn *rtmp.Conn) {
-	l.RLock()
-	ch := channels[conn.URL.Path]
-	l.RUnlock()
-
-	if ch != nil {
-		cursor := ch.que.Latest()
-		err := avutil.CopyFile(conn, cursor)
-		if err != nil {
-			common.LogErrorf("Could not copy video to connection: %v\n", err)
-		}
+// handleMediamtxAuth validates publishers. mediamtx is configured to bypass
+// auth for read/api/metrics/pprof, so this handler only sees publish actions.
+// On success, writes 200; on failure, 401.
+//
+// Note: we deliberately do not restrict by source IP. On FreeBSD jails the
+// loopback address gets rewritten to the jail's primary IP, so a strict
+// loopback check would reject mediamtx's local callback. The actual auth
+// boundary is the stream key check below.
+func handleMediamtxAuth(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
 	}
+
+	var req mediamtxAuthRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	if req.Action != "publish" {
+		// Reads should be excluded server-side; allow defensively.
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	// Path format: "live/<streamKey>"
+	parts := strings.SplitN(req.Path, "/", 2)
+	if len(parts) != 2 || parts[0] != "live" || parts[1] == "" {
+		common.LogInfof("[publish] denied: bad path %q from %s\n", req.Path, req.IP)
+		http.Error(w, "bad path", http.StatusUnauthorized)
+		return
+	}
+	if parts[1] != settings.GetStreamKey() {
+		common.LogInfof("[publish] denied: bad stream key from %s\n", req.IP)
+		http.Error(w, "bad key", http.StatusUnauthorized)
+		return
+	}
+
+	common.LogInfof("[publish] accepted from %s for path %s\n", req.IP, req.Path)
+	activePath.invalidate()
+	w.WriteHeader(http.StatusOK)
 }
 
-func handleLive(w http.ResponseWriter, r *http.Request) {
-	l.RLock()
-	ch := channels[strings.Trim(r.URL.Path, "/")]
-	l.RUnlock()
+// handleHLS reverse-proxies HLS requests to mediamtx. The active publishing
+// path is discovered via the mediamtx control API (cached briefly). The
+// configured publish path includes the stream key (e.g. "live/<key>"), but we
+// expose it externally as a fixed "/hls/..." prefix so the key is not leaked.
+func handleHLS(w http.ResponseWriter, r *http.Request) {
+	path := activePath.get()
+	if path == "" {
+		w.Header().Set("Cache-Control", "no-store")
+		http.Error(w, "no active stream", http.StatusNotFound)
+		stats.resetViewers()
+		return
+	}
 
-	if ch != nil {
-		w.Header().Set("Content-Type", "video/x-flv")
-		w.Header().Set("Transfer-Encoding", "chunked")
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.WriteHeader(200)
-		flusher := w.(http.Flusher)
-		flusher.Flush()
+	suffix := strings.TrimPrefix(r.URL.Path, "/hls")
+	if suffix == "" || suffix == "/" {
+		suffix = "/index.m3u8"
+	}
 
-		muxer := flv.NewMuxerWriteFlusher(writeFlusher{httpflusher: flusher, Writer: w})
-		cursor := ch.que.Latest()
+	// mediamtx serves at /<path>/<file>
+	r.URL.Path = "/" + path + suffix
+	r.Host = settings.MediamtxHlsAddress
 
+	// Track viewers by session for stats (m3u8 requests only, not segments).
+	if strings.HasSuffix(suffix, ".m3u8") {
 		session, _ := sstore.Get(r, "moviesession")
 		stats.addViewer(session.ID)
-		err := avutil.CopyFile(muxer, cursor)
-		if err != nil {
-			common.LogErrorf("Could not copy video to connection: %v\n", err)
-		}
-		stats.removeViewer(session.ID)
-	} else {
-		// Maybe HTTP_204 is better than HTTP_404
-		w.WriteHeader(http.StatusNoContent)
-		stats.resetViewers()
 	}
+
+	hlsProxy.ServeHTTP(w, r)
 }
 
 func handleDefault(w http.ResponseWriter, r *http.Request) {
